@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Code Explainer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="gradient-bg"></div>
+
+    <div class="container">
+        <div class="header">
+            <i class="fas fa-code logo-icon"></i>
+            <h1>Real-Time Code Explainer</h1>
+            <p>Understand any code instantly with AI-powered explanations</p>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-keyboard"></i> Input Code
+                    </h2>
+                </div>
+
+                <div class="controls">
+                    <div class="select-wrapper">
+                        <label for="language">Programming Language</label>
+                        <select id="language">
+                            <option value="auto">Auto-detect</option>
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="typescript">TypeScript</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="csharp">C#</option>
+                            <option value="go">Go</option>
+                            <option value="rust">Rust</option>
+                            <option value="ruby">Ruby</option>
+                            <option value="php">PHP</option>
+                            <option value="swift">Swift</option>
+                            <option value="kotlin">Kotlin</option>
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                            <option value="sql">SQL</option>
+                        </select>
+                    </div>
+
+                    <div class="select-wrapper">
+                        <label for="level">Explanation Level</label>
+                        <select id="level">
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="expert">Expert</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="code-editor">
+                    <textarea id="codeInput" class="code-textarea" placeholder="Paste your code here...
+
+Example:
+def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)"></textarea>
+                </div>
+
+                <button id="explainBtn" class="explain-btn" type="button">
+                    <i class="fas fa-magic"></i> Explain Code
+                </button>
+
+                <div class="loading" id="loading">
+                    <i class="fas fa-spinner"></i>
+                    <p>Analyzing your code...</p>
+                </div>
+
+                <div class="error-message" id="errorMessage"></div>
+            </div>
+
+            <div class="output-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-lightbulb"></i> Explanation
+                    </h2>
+                </div>
+
+                <div class="output-content" id="outputContent">
+                    <div class="welcome-message">
+                        <i class="fas fa-brain"></i>
+                        <h3>Ready to explain your code!</h3>
+                        <p>Paste your code in the editor and click "Explain Code" to get started.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
