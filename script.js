@@ -47,16 +47,19 @@ async function handleExplainCode() {
 
     try {
         // Format the request body according to the API's expected format
-        // Based on the Postman screenshot
         const requestBody = {
             code: code,
-            language: language === 'auto' ? null : language,
+            language: language, // Send 'auto' as a string instead of null
             explanation_level: level
         };
 
         console.log('Sending request to API:', requestBody);
+        console.log('Language selected:', language);
 
-        const response = await fetch(`${API_URL}/explain`, {
+        // First try the /explain endpoint
+        let response;
+        try {
+            response = await fetch(`${API_URL}/explain`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -65,7 +68,23 @@ async function handleExplainCode() {
             body: JSON.stringify(requestBody),
             mode: 'cors', // Enable CORS
             credentials: 'same-origin' // Include credentials only for same-origin requests
-        });
+            });
+        } catch (error) {
+            console.error('Error with /explain endpoint:', error);
+            console.log('Falling back to /explain-simple endpoint...');
+
+            // If the main endpoint fails, try the simpler endpoint
+            response = await fetch(`${API_URL}/explain-simple`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(requestBody),
+                mode: 'cors',
+                credentials: 'same-origin'
+            });
+        }
 
         // Log the response status and headers for debugging
         console.log('Response status:', response.status);
@@ -75,15 +94,42 @@ async function handleExplainCode() {
             // Try to get error details from the response
             const errorText = await response.text();
             console.error('Error response:', errorText);
+            console.error('Response status:', response.status);
 
             let errorMessage = 'Failed to explain code';
-            try {
-                const errorData = JSON.parse(errorText);
-                errorMessage = errorData.detail || errorData.message || errorMessage;
-            } catch (e) {
-                // If parsing fails, use the raw text
-                if (errorText) {
-                    errorMessage = `Server error: ${errorText.substring(0, 100)}${errorText.length > 100 ? '...' : ''}`;
+
+            // Handle specific HTTP status codes with user-friendly messages
+            if (response.status === 422) {
+                errorMessage = 'The server couldn\'t process your code. It might be in an unsupported format.';
+            } else if (response.status === 400) {
+                errorMessage = 'There was an issue with your request. Please check your code and try again.';
+            } else if (response.status === 500) {
+                errorMessage = 'The server encountered an internal error. Our team has been notified.';
+            } else if (response.status === 503) {
+                errorMessage = 'The explanation service is temporarily unavailable. Please try again later.';
+            } else if (response.status === 429) {
+                errorMessage = 'Too many requests. Please wait a moment before trying again.';
+            } else {
+                // Try to parse the error response for more details
+                try {
+                    const errorData = JSON.parse(errorText);
+                    console.error('Error data:', errorData);
+
+                    // Handle Pydantic validation errors
+                    if (Array.isArray(errorData.detail)) {
+                        // Create a more user-friendly validation error message
+                        errorMessage = 'There was an issue with your request format.';
+                        console.log('Validation errors:', errorData.detail);
+                    } else {
+                        errorMessage = errorData.detail || errorData.message || errorMessage;
+                    }
+                } catch (e) {
+                    // If parsing fails, use the raw text but make it user-friendly
+                    console.error('Error parsing error response:', e);
+                    if (errorText) {
+                        // Don't expose raw error text to users
+                        errorMessage = `The server returned an error (${response.status})`;
+                    }
                 }
             }
 
@@ -106,7 +152,31 @@ async function handleExplainCode() {
 
     } catch (error) {
         console.error('Error:', error);
-        showError('Error: ' + error.message);
+
+        // Create a user-friendly error message
+        let userMessage = '';
+        let showTrySimpleButton = false;
+
+        if (error.message.includes('json')) {
+            userMessage = 'The server encountered a technical issue processing your code.';
+            showTrySimpleButton = true;
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            userMessage = 'Unable to connect to the explanation service. Please check your internet connection and try again.';
+        } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
+            userMessage = 'The request took too long to process. Please try again with a smaller code sample.';
+            showTrySimpleButton = true;
+        } else if (error.message.includes('Validation error')) {
+            userMessage = 'There was an issue with your request format. Please try again with different options.';
+        } else if (error.message.includes('Server error') || error.message.includes('422')) {
+            userMessage = 'The server encountered an error processing your request. This might be due to an issue with the code format or language detection.';
+            showTrySimpleButton = true;
+        } else {
+            // If we can't determine a specific error, provide a generic but friendly message
+            userMessage = 'Something went wrong while explaining your code. Please try again or try with a different code sample.';
+            showTrySimpleButton = true;
+        }
+
+        showError(userMessage, showTrySimpleButton);
     } finally {
         loadingElement.style.display = 'none';
         explainBtn.disabled = false;
@@ -125,6 +195,30 @@ function displayExplanation(data) {
 
     let html = '';
 
+    // Check if this is a simple explanation (from /explain-simple endpoint)
+    if (data.explanation && !data.overall_explanation) {
+        // Simple explanation format
+        html += `
+            <div class="explanation-section">
+                <div class="fallback-notice">
+                    <div class="fallback-header">
+                        <i class="fas fa-info-circle"></i> Using simplified explanation mode
+                    </div>
+                    <div class="fallback-details">
+                        The advanced explanation engine encountered an issue, so we're using our simplified engine instead.
+                        This provides basic code explanations without the detailed breakdown.
+                    </div>
+                </div>
+                <h3><i class="fas fa-book"></i> Explanation</h3>
+                <p>${data.explanation || 'No explanation provided.'}</p>
+            </div>
+        `;
+
+        outputContent.innerHTML = html;
+        return;
+    }
+
+    // Detailed explanation format (from /explain endpoint)
     // Overall explanation section
     html += `
         <div class="explanation-section">
@@ -244,9 +338,69 @@ function displayExplanation(data) {
 }
 
 // Helper function to show error messages
-function showError(message) {
-    errorElement.textContent = message;
+function showError(message, showTrySimpleButton = false) {
+    // Add an icon to the error message
+    errorElement.innerHTML = `
+        <i class="fas fa-exclamation-circle" style="position: absolute; left: 15px; top: 15px; font-size: 1.2rem;"></i>
+        ${message}
+        ${showTrySimpleButton ?
+            '<div style="margin-top: 10px;"><button id="trySimpleBtn" class="retry-btn">Try Simplified Mode</button></div>' :
+            '<div style="margin-top: 10px; font-size: 0.9rem; opacity: 0.8;">Try adjusting your code or selecting a different language.</div>'}
+    `;
+
     errorElement.style.display = 'block';
+
+    // If we have a "Try Simplified Mode" button, add a click handler
+    const trySimpleBtn = document.getElementById('trySimpleBtn');
+    if (trySimpleBtn) {
+        trySimpleBtn.addEventListener('click', async () => {
+            // Hide the error
+            errorElement.style.display = 'none';
+
+            // Show loading state
+            loadingElement.style.display = 'block';
+            explainBtn.disabled = true;
+
+            try {
+                // Get the current values
+                const code = codeInput.value.trim();
+                const language = languageSelect.value;
+                const level = levelSelect.value;
+
+                // Make a direct request to the explain-simple endpoint
+                const requestBody = {
+                    code: code,
+                    language: language,
+                    explanation_level: level
+                };
+
+                const response = await fetch(`${API_URL}/explain-simple`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody),
+                    mode: 'cors',
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to get simplified explanation');
+                }
+
+                const result = await response.json();
+                displayExplanation(result);
+
+            } catch (error) {
+                console.error('Error with simplified mode:', error);
+                showError('Unable to get a simplified explanation. Please try again later.');
+            } finally {
+                loadingElement.style.display = 'none';
+                explainBtn.disabled = false;
+            }
+        });
+    }
 }
 
 // Helper function to escape HTML
@@ -255,3 +409,4 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
