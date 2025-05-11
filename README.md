@@ -42,7 +42,7 @@
 ## 🎯 What You Get
 
 <div align="center">
-  <img src="https://github.com/omara2001/Real-Time-Code-Explainer-Tool/WhatYouGet.png" alt="Feature Breakdown" width="800">
+  <img src="https://github.com/omara2001/Real-Time-Code-Explainer-Tool/blob/main/WhatYouGet.png" alt="Feature Breakdown" width="800">
 </div>
 
 ### 📊 Comprehensive Analysis
@@ -149,11 +149,11 @@ Open http://localhost:8000 in your browser!
   <table>
     <tr>
       <td width="50%">
-        <img src="https://github.com/omara2001/Real-Time-Code-Explainer-Tool/InputScreen.png" alt="Input Screen">
+        <img src="https://github.com/omara2001/Real-Time-Code-Explainer-Tool/blob/main/InputScreen.png" alt="Input Screen">
         <p align="center"><b>Clean Code Input Interface</b></p>
       </td>
       <td width="50%">
-        <img src="https://github.com/omara2001/Real-Time-Code-Explainer-Tool/ExplanationScreen.png" alt="Explanation Screen">
+        <img src="https://github.com/omara2001/Real-Time-Code-Explainer-Tool/blob/main/ExplanationScreen.png" alt="Explanation Screen">
         <p align="center"><b>Detailed Code Explanations</b></p>
       </td>
     </tr>
